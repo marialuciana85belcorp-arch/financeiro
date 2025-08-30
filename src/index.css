@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design system para Lucro Fácil - Sistema de Controle Financeiro */
+/* Inspirado em crescimento financeiro com tons de verde e dourado */
+
+@layer base {
+  :root {
+    /* Background principal com tom suave */
+    --background: 120 8% 97%;
+    --foreground: 140 15% 15%;
+
+    /* Cards com tom levemente esverdeado */
+    --card: 120 15% 98%;
+    --card-foreground: 140 15% 15%;
+
+    /* Popover clean */
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 15% 15%;
+
+    /* Primary: verde vibrante para lucro */
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 142 86% 56%;
+
+    /* Secondary: verde suave */
+    --secondary: 120 60% 88%;
+    --secondary-foreground: 140 50% 25%;
+
+    /* Muted: tons neutros esverdeados */
+    --muted: 120 12% 95%;
+    --muted-foreground: 140 15% 55%;
+
+    /* Accent: dourado vibrante para destaque */
+    --accent: 45 95% 58%;
+    --accent-foreground: 140 50% 15%;
+
+    /* Destructive mantido */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders e inputs suaves */
+    --border: 120 20% 88%;
+    --input: 120 20% 92%;
+    --ring: 142 76% 50%;
+
+    --radius: 0.75rem;
+
+    /* Gradientes personalizados para o tema financeiro */
+    --gradient-primary: linear-gradient(135deg, hsl(142, 76%, 36%), hsl(142, 86%, 56%));
+    --gradient-accent: linear-gradient(135deg, hsl(45, 95%, 58%), hsl(45, 100%, 68%));
+    --gradient-card: linear-gradient(135deg, hsl(120, 15%, 98%), hsl(120, 12%, 96%));
+    
+    /* Shadows elegantes com tema verde */
+    --shadow-card: 0 4px 20px hsl(142, 30%, 20%, 0.08);
+    --shadow-primary: 0 8px 32px hsl(142, 76%, 36%, 0.25);
+    --shadow-accent: 0 4px 16px hsl(45, 95%, 58%, 0.15);
+
+    /* Cores específicas do sistema */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 45 95% 58%;
+    --warning-foreground: 140 50% 15%;
+    --info: 200 75% 55%;
+    --info-foreground: 0 0% 98%;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Background escuro com tom esverdeado */
+    --background: 140 15% 8%;
+    --foreground: 120 15% 95%;
+
+    /* Cards escuros com tom verde */
+    --card: 140 20% 10%;
+    --card-foreground: 120 15% 95%;
+
+    /* Popover escuro */
+    --popover: 140 20% 10%;
+    --popover-foreground: 120 15% 95%;
+
+    /* Primary verde vibrante para dark mode */
+    --primary: 142 76% 45%;
+    --primary-foreground: 140 20% 10%;
+    --primary-glow: 142 86% 65%;
+
+    /* Secondary verde escuro */
+    --secondary: 140 25% 15%;
+    --secondary-foreground: 120 15% 85%;
+
+    /* Muted tons escuros esverdeados */
+    --muted: 140 20% 12%;
+    --muted-foreground: 120 10% 65%;
+
+    /* Accent dourado para dark mode */
+    --accent: 45 85% 55%;
+    --accent-foreground: 140 20% 10%;
+
+    /* Destructive para dark mode */
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 120 15% 95%;
+
+    /* Borders e inputs escuros */
+    --border: 140 25% 18%;
+    --input: 140 25% 15%;
+    --ring: 142 76% 50%;
+    /* Cores específicas do sistema para dark mode */
+    --success: 142 76% 45%;
+    --success-foreground: 140 20% 10%;
+    --warning: 45 85% 55%;
+    --warning-foreground: 140 20% 10%;
+    --info: 200 75% 60%;
+    --info-foreground: 140 20% 10%;
+
+    /* Gradientes para dark mode */
+    --gradient-primary: linear-gradient(135deg, hsl(142, 76%, 35%), hsl(142, 86%, 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(45, 85%, 50%), hsl(45, 95%, 60%));
+    --gradient-card: linear-gradient(135deg, hsl(140, 20%, 10%), hsl(140, 25%, 12%));
+    
+    /* Shadows para dark mode */
+    --shadow-card: 0 4px 20px hsl(0, 0%, 0%, 0.3);
+    --shadow-primary: 0 8px 32px hsl(142, 76%, 35%, 0.4);
+    --shadow-accent: 0 4px 16px hsl(45, 85%, 50%, 0.3);
+
+    --sidebar-background: 140 20% 8%;
+    --sidebar-foreground: 120 15% 90%;
+    --sidebar-primary: 142 76% 45%;
+    --sidebar-primary-foreground: 140 20% 10%;
+    --sidebar-accent: 140 25% 15%;
+    --sidebar-accent-foreground: 120 15% 85%;
+    --sidebar-border: 140 25% 18%;
+    --sidebar-ring: 142 76% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
