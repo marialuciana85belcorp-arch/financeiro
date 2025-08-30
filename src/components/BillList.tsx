@@ -1,16 +1,25 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Calendar, CheckCircle, Clock } from "lucide-react";
+import { CreditCard, Calendar, CheckCircle, Clock, Edit } from "lucide-react";
+import { EditBillDialog } from "@/components/EditBillDialog";
 import type { Bill } from "@/types";
 import { toast } from "sonner";
 
 interface BillListProps {
   bills: Bill[];
   onUpdateBillStatus: (billId: string, status: 'pending' | 'paid') => void;
+  onEditBill: (billId: string, updates: { 
+    description: string;
+    amount: number;
+    dueDate: string;
+    status: 'pending' | 'paid';
+  }) => Promise<void>;
 }
 
-export const BillList = ({ bills, onUpdateBillStatus }: BillListProps) => {
+export const BillList = ({ bills, onUpdateBillStatus, onEditBill }: BillListProps) => {
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const pendingBills = bills.filter(bill => bill.status === 'pending');
   const paidBills = bills.filter(bill => bill.status === 'paid');
   
@@ -109,6 +118,15 @@ export const BillList = ({ bills, onUpdateBillStatus }: BillListProps) => {
                         
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => setEditingBill(bill)}
+                          title="Editar boleto"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                          size="sm"
                           variant={bill.status === 'paid' ? 'outline' : 'default'}
                           onClick={() => handleStatusChange(bill.id, bill.status)}
                         >
@@ -125,6 +143,15 @@ export const BillList = ({ bills, onUpdateBillStatus }: BillListProps) => {
             })}
         </div>
       </div>
+      
+      {editingBill && (
+        <EditBillDialog
+          bill={editingBill}
+          open={!!editingBill}
+          onOpenChange={(open) => !open && setEditingBill(null)}
+          onSave={onEditBill}
+        />
+      )}
     </div>
   );
 };

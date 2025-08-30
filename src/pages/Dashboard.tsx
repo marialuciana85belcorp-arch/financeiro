@@ -406,6 +406,82 @@ const Index = () => {
     }
   };
 
+  const editExpense = async (expenseId: string, updates: { 
+    description: string;
+    amount: number;
+    category: string;
+  }) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({
+          description: updates.description,
+          amount: updates.amount,
+          category: updates.category
+        })
+        .eq('id', expenseId);
+
+      if (error) {
+        console.error('Erro ao atualizar despesa:', error);
+        toast.error('Erro ao atualizar despesa');
+        return;
+      }
+
+      // Atualizar estado local
+      setExpenses(prevExpenses => 
+        prevExpenses.map(e => 
+          e.id === expenseId 
+            ? { ...e, ...updates }
+            : e
+        )
+      );
+
+      toast.success('Despesa atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar despesa:', error);
+      toast.error('Erro ao atualizar despesa');
+    }
+  };
+
+  const editBill = async (billId: string, updates: { 
+    description: string;
+    amount: number;
+    dueDate: string;
+    status: 'pending' | 'paid';
+  }) => {
+    try {
+      const { error } = await supabase
+        .from('bills')
+        .update({
+          description: updates.description,
+          amount: updates.amount,
+          due_date: updates.dueDate,
+          status: updates.status
+        })
+        .eq('id', billId);
+
+      if (error) {
+        console.error('Erro ao atualizar boleto:', error);
+        toast.error('Erro ao atualizar boleto');
+        return;
+      }
+
+      // Atualizar estado local
+      setBills(prevBills => 
+        prevBills.map(b => 
+          b.id === billId 
+            ? { ...b, description: updates.description, amount: updates.amount, dueDate: updates.dueDate, status: updates.status }
+            : b
+        )
+      );
+
+      toast.success('Boleto atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar boleto:', error);
+      toast.error('Erro ao atualizar boleto');
+    }
+  };
+
   const updateBillStatus = async (billId: string, status: 'pending' | 'paid') => {
     try {
       const { error } = await supabase
@@ -686,7 +762,7 @@ const Index = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ExpenseList expenses={expenses} />
+                  <ExpenseList expenses={expenses} onEditExpense={editExpense} />
                 </CardContent>
               </Card>
             </div>
@@ -720,7 +796,7 @@ const Index = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BillList bills={bills} onUpdateBillStatus={updateBillStatus} />
+                  <BillList bills={bills} onUpdateBillStatus={updateBillStatus} onEditBill={editBill} />
                 </CardContent>
               </Card>
             </div>
