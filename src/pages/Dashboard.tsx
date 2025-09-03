@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Package, TrendingUp, DollarSign, Users, BarChart3, Plus, Eye, Calculator, Receipt, CreditCard, LogOut } from "lucide-react";
+import { ShoppingBag, Package, TrendingUp, DollarSign, Users, BarChart3, Plus, Eye, Calculator, Receipt, CreditCard, LogOut, RefreshCw } from "lucide-react";
 import { ProductForm } from "@/components/ProductForm";
 import { SaleForm } from "@/components/SaleForm";
 import { Dashboard } from "@/components/Dashboard";
@@ -31,6 +31,7 @@ const Index = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
+  const [reconnecting, setReconnecting] = useState(false);
   const [isFinancialDataVisible, setIsFinancialDataVisible] = useState(true);
   const { config: taxConfig, setConfig: setTaxConfig, calculateSale } = useTaxConfig();
   const navigate = useNavigate();
@@ -46,13 +47,45 @@ const Index = () => {
     loadAllData();
   }, []);
 
+  // Função para tentar operações com retry em caso de falha
+  const loadDataWithRetry = async (loadFunction, retryCount = 3, delay = 1000) => {
+    let lastError;
+    
+    for (let attempt = 0; attempt < retryCount; attempt++) {
+      try {
+        return await loadFunction();
+      } catch (error) {
+        console.log(`Tentativa ${attempt + 1} falhou:`, error);
+        lastError = error;
+        
+        // Esperar antes de tentar novamente
+        if (attempt < retryCount - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw lastError;
+  };
+
   const loadAllData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadProducts(), loadSales(), loadExpenses(), loadBills()]);
+      setReconnecting(false);
+      await Promise.all([
+        loadDataWithRetry(loadProducts),
+        loadDataWithRetry(loadSales),
+        loadDataWithRetry(loadExpenses),
+        loadDataWithRetry(loadBills)
+      ]);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados do sistema');
+      setReconnecting(true);
+      // Tentar novamente após 5 segundos
+      setTimeout(() => {
+        loadAllData();
+      }, 5000);
     } finally {
       setLoading(false);
     }
@@ -72,7 +105,7 @@ const Index = () => {
       if (error) {
         console.error('Erro ao atualizar produto:', error);
         toast.error('Erro ao atualizar produto');
-        return;
+        throw error; // Lançar erro para ser capturado pelo retry
       }
 
       // Atualizar estado local
@@ -86,8 +119,8 @@ const Index = () => {
 
       toast.success('Produto atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar produto:', error);
-      toast.error('Erro ao atualizar produto');
+      console.error('Erro ao atualizar produto (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
@@ -120,7 +153,7 @@ const Index = () => {
       if (error) {
         console.error('Erro ao atualizar venda:', error);
         toast.error('Erro ao atualizar venda');
-        return;
+        throw error; // Lançar erro para ser capturado pelo retry
       }
 
       // Atualizar estado local
@@ -140,107 +173,127 @@ const Index = () => {
 
       toast.success('Venda atualizada com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar venda:', error);
-      toast.error('Erro ao atualizar venda');
+      console.error('Erro ao atualizar venda (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
   const loadProducts = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Erro ao carregar produtos:', error);
-      toast.error('Erro ao carregar produtos');
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao carregar produtos:', error);
+        toast.error('Erro ao carregar produtos');
+        throw error; // Lançar erro para ser capturado pelo retry
+      }
 
-    const formattedProducts: Product[] = data.map((item: ProductDB) => ({
-      id: item.id,
-      name: item.name,
-      purchasePrice: parseFloat(item.purchase_price.toString()),
-      stock: item.stock,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at
-    }));
-    setProducts(formattedProducts);
+      const formattedProducts: Product[] = data.map((item: ProductDB) => ({
+        id: item.id,
+        name: item.name,
+        purchasePrice: parseFloat(item.purchase_price.toString()),
+        stock: item.stock,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+      setProducts(formattedProducts);
+    } catch (error) {
+      console.error('Erro ao carregar produtos (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
+    }
   };
 
   const loadSales = async () => {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Erro ao carregar vendas:', error);
-      toast.error('Erro ao carregar vendas');
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao carregar vendas:', error);
+        toast.error('Erro ao carregar vendas');
+        throw error; // Lançar erro para ser capturado pelo retry
+      }
 
-    const formattedSales: Sale[] = data.map((item: SaleDB) => ({
-      id: item.id,
-      productId: item.product_id,
-      productName: item.product_name,
-      profile: item.profile as 'JF' | 'Luciana',
-      marketplace: (item.marketplace as 'Shopee' | 'Mercado Livre') || 'Shopee', // Default para compatibilidade
-      quantity: item.quantity,
-      salePrice: parseFloat(item.sale_price.toString()),
-      purchasePrice: parseFloat(item.purchase_price.toString()),
-      standardTax: parseFloat(item.standard_tax.toString()),
-      profileTax: parseFloat(item.profile_tax.toString()),
-      netProfit: parseFloat(item.net_profit.toString()),
-      createdAt: item.created_at
-    }));
-    setSales(formattedSales);
+      const formattedSales: Sale[] = data.map((item: SaleDB) => ({
+        id: item.id,
+        productId: item.product_id,
+        productName: item.product_name,
+        profile: item.profile as 'JF' | 'Luciana',
+        marketplace: (item.marketplace as 'Shopee' | 'Mercado Livre') || 'Shopee', // Default para compatibilidade
+        quantity: item.quantity,
+        salePrice: parseFloat(item.sale_price.toString()),
+        purchasePrice: parseFloat(item.purchase_price.toString()),
+        standardTax: parseFloat(item.standard_tax.toString()),
+        profileTax: parseFloat(item.profile_tax.toString()),
+        netProfit: parseFloat(item.net_profit.toString()),
+        createdAt: item.created_at
+      }));
+      setSales(formattedSales);
+    } catch (error) {
+      console.error('Erro ao carregar vendas (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
+    }
   };
 
   const loadExpenses = async () => {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Erro ao carregar despesas:', error);
-      toast.error('Erro ao carregar despesas');
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao carregar despesas:', error);
+        toast.error('Erro ao carregar despesas');
+        throw error; // Lançar erro para ser capturado pelo retry
+      }
 
-    const formattedExpenses: Expense[] = data.map((item: ExpenseDB) => ({
-      id: item.id,
-      description: item.description,
-      amount: parseFloat(item.amount.toString()),
-      category: item.category,
-      createdAt: item.created_at
-    }));
-    setExpenses(formattedExpenses);
+      const formattedExpenses: Expense[] = data.map((item: ExpenseDB) => ({
+        id: item.id,
+        description: item.description,
+        amount: parseFloat(item.amount.toString()),
+        category: item.category,
+        createdAt: item.created_at
+      }));
+      setExpenses(formattedExpenses);
+    } catch (error) {
+      console.error('Erro ao carregar despesas (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
+    }
   };
 
   const loadBills = async () => {
-    const { data, error } = await supabase
-      .from('bills')
-      .select('*')
-      .order('due_date', { ascending: true });
-    
-    if (error) {
-      console.error('Erro ao carregar boletos:', error);
-      toast.error('Erro ao carregar boletos');
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('bills')
+        .select('*')
+        .order('due_date', { ascending: true });
+      
+      if (error) {
+        console.error('Erro ao carregar boletos:', error);
+        toast.error('Erro ao carregar boletos');
+        throw error; // Lançar erro para ser capturado pelo retry
+      }
 
-    const formattedBills: Bill[] = data.map((item: BillDB) => ({
-      id: item.id,
-      description: item.description,
-      amount: parseFloat(item.amount.toString()),
-      dueDate: item.due_date,
-      status: item.status as 'pending' | 'paid',
-      createdAt: item.created_at,
-      updatedAt: item.updated_at
-    }));
-    setBills(formattedBills);
+      const formattedBills: Bill[] = data.map((item: BillDB) => ({
+        id: item.id,
+        description: item.description,
+        amount: parseFloat(item.amount.toString()),
+        dueDate: item.due_date,
+        status: item.status as 'pending' | 'paid',
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+      setBills(formattedBills);
+    } catch (error) {
+      console.error('Erro ao carregar boletos (capturado):', error);
+      throw error; // Relançar para o mecanismo de retry
+    }
   };
 
   // Função para calcular taxas e lucro
@@ -259,14 +312,15 @@ const Index = () => {
       if (error) {
         console.error('Erro ao adicionar produto:', error);
         toast.error('Erro ao adicionar produto');
-        return;
+        throw error; // Lançar erro para ser capturado pelo retry
       }
 
       toast.success('Produto adicionado com sucesso!');
-      await loadProducts();
+      await loadDataWithRetry(loadProducts);
     } catch (error) {
-      console.error('Erro ao adicionar produto:', error);
+      console.error('Erro ao adicionar produto (capturado):', error);
       toast.error('Erro ao adicionar produto');
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
@@ -310,7 +364,7 @@ const Index = () => {
       if (saleError) {
         console.error('Erro ao adicionar venda:', saleError);
         toast.error('Erro ao adicionar venda: ' + saleError.message);
-        return;
+        throw saleError; // Lançar erro para ser capturado pelo retry
       }
 
       // Atualizar estoque do produto
@@ -322,7 +376,7 @@ const Index = () => {
       if (updateError) {
         console.error('Erro ao atualizar estoque:', updateError);
         toast.error('Erro ao atualizar estoque: ' + updateError.message);
-        return;
+        throw updateError; // Lançar erro para ser capturado pelo retry
       }
 
       // Atualizar estado local imediatamente para melhor UX
@@ -355,12 +409,13 @@ const Index = () => {
       
       // Recarregar dados em background para garantir sincronização
       setTimeout(() => {
-        Promise.all([loadSales(), loadProducts()]).catch(console.error);
+        Promise.all([loadDataWithRetry(loadSales), loadDataWithRetry(loadProducts)]).catch(console.error);
       }, 500);
       
     } catch (error) {
-      console.error('Erro ao adicionar venda:', error);
+      console.error('Erro ao adicionar venda (capturado):', error);
       toast.error('Erro inesperado ao adicionar venda');
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
@@ -377,14 +432,15 @@ const Index = () => {
       if (error) {
         console.error('Erro ao adicionar despesa:', error);
         toast.error('Erro ao adicionar despesa');
-        return;
+        throw error; // Lançar erro para ser capturado pelo retry
       }
 
       toast.success('Despesa registrada com sucesso!');
-      await loadExpenses();
+      await loadDataWithRetry(loadExpenses);
     } catch (error) {
-      console.error('Erro ao adicionar despesa:', error);
+      console.error('Erro ao adicionar despesa (capturado):', error);
       toast.error('Erro ao adicionar despesa');
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
@@ -402,14 +458,15 @@ const Index = () => {
       if (error) {
         console.error('Erro ao adicionar boleto:', error);
         toast.error('Erro ao adicionar boleto');
-        return;
+        throw error; // Lançar erro para ser capturado pelo retry
       }
 
       toast.success('Boleto registrado com sucesso!');
-      await loadBills();
+      await loadDataWithRetry(loadBills);
     } catch (error) {
-      console.error('Erro ao adicionar boleto:', error);
+      console.error('Erro ao adicionar boleto (capturado):', error);
       toast.error('Erro ao adicionar boleto');
+      throw error; // Relançar para o mecanismo de retry
     }
   };
 
@@ -557,6 +614,26 @@ const Index = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (reconnecting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Reconectando ao servidor...</p>
+          <Button
+            onClick={loadAllData}
+            variant="outline"
+            size="sm"
+            className="mt-4 flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Tentar novamente
+          </Button>
         </div>
       </div>
     );
