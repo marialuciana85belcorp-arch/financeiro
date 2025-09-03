@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PrivacyToggle } from "@/components/PrivacyToggle";
 import { SalesList } from "@/components/SalesList";
 import { TaxSettings, useTaxConfig } from "@/components/TaxSettings";
+import { MonthSelector } from "@/components/MonthSelector";
 import type { Product, Sale, Expense, Bill, ProductDB, SaleDB, ExpenseDB, BillDB } from "@/types";
 import { useNavigate } from "react-router-dom";
 
@@ -33,6 +34,12 @@ const Index = () => {
   const [isFinancialDataVisible, setIsFinancialDataVisible] = useState(true);
   const { config: taxConfig, setConfig: setTaxConfig, calculateSale } = useTaxConfig();
   const navigate = useNavigate();
+  
+  // Estado para o mês selecionado
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   // Carregar dados iniciais do Supabase
   useEffect(() => {
@@ -512,10 +519,35 @@ const Index = () => {
     }
   };
 
-  // Calcular métricas do dashboard
-  const totalSales = sales.reduce((sum, sale) => sum + (sale.salePrice * sale.quantity), 0);
-  const totalProfit = sales.reduce((sum, sale) => sum + sale.netProfit, 0);
-  const totalTaxes = sales.reduce((sum, sale) => sum + sale.standardTax + sale.profileTax, 0);
+  // Filtrar dados pelo mês selecionado
+  const filteredSales = useMemo(() => {
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt);
+      const saleMonth = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
+      return saleMonth === selectedMonth;
+    });
+  }, [sales, selectedMonth]);
+  
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.createdAt);
+      const expenseMonth = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+      return expenseMonth === selectedMonth;
+    });
+  }, [expenses, selectedMonth]);
+  
+  const filteredBills = useMemo(() => {
+    return bills.filter(bill => {
+      const billDate = new Date(bill.dueDate);
+      const billMonth = `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
+      return billMonth === selectedMonth;
+    });
+  }, [bills, selectedMonth]);
+
+  // Calcular totais para o dashboard com base nos dados filtrados
+  const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.salePrice * sale.quantity), 0);
+  const totalProfit = filteredSales.reduce((sum, sale) => sum + sale.netProfit, 0);
+  const totalTaxes = filteredSales.reduce((sum, sale) => sum + sale.standardTax + sale.profileTax, 0);
   const totalProducts = products.length;
   const lowStockProducts = products.filter(p => p.stock < 5).length;
 
@@ -571,6 +603,9 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-8">
+        <div className="flex justify-end mb-4">
+          <MonthSelector sales={sales} onMonthChange={setSelectedMonth} />
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Navigation Tabs */}
           <TabsList className="grid w-full grid-cols-9 bg-muted/50">
@@ -620,16 +655,16 @@ const Index = () => {
               totalTaxes={totalTaxes} 
               totalProducts={totalProducts} 
               lowStockProducts={lowStockProducts} 
-              sales={sales} 
+              sales={filteredSales} 
               products={products} 
             />
           </TabsContent>
 
           <TabsContent value="revenue" className="space-y-6">
             <TotalRevenue 
-              sales={sales}
-              expenses={expenses}
-              bills={bills}
+              sales={filteredSales}
+              expenses={filteredExpenses}
+              bills={filteredBills}
             />
           </TabsContent>
 
