@@ -42,13 +42,39 @@ const Index = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  // Carregar dados iniciais do Supabase
+  // Verificar conexão com o Supabase e carregar dados iniciais
   useEffect(() => {
-    loadAllData();
+    const checkConnectionAndLoadData = async () => {
+      try {
+        // Verificar conexão com o Supabase fazendo uma consulta simples
+        const { error } = await supabase.from('products').select('count', { count: 'exact', head: true });
+        
+        if (error) {
+          console.error('Erro ao verificar conexão com Supabase:', error);
+          if (error.message.includes('404') || error.message.includes('NOT_FOUND')) {
+            toast.error('Erro 404: Servidor não encontrado');
+            setReconnecting(true);
+            // Tentar novamente após 10 segundos
+            setTimeout(() => checkConnectionAndLoadData(), 10000);
+            return;
+          }
+        }
+        
+        // Se chegou aqui, a conexão está ok
+        loadAllData();
+      } catch (error) {
+        console.error('Erro ao verificar conexão:', error);
+        setReconnecting(true);
+        // Tentar novamente após 5 segundos
+        setTimeout(() => checkConnectionAndLoadData(), 5000);
+      }
+    };
+    
+    checkConnectionAndLoadData();
   }, []);
 
   // Função para tentar operações com retry em caso de falha
-  const loadDataWithRetry = async (loadFunction, retryCount = 3, delay = 1000) => {
+  const loadDataWithRetry = async (loadFunction, retryCount = 5, delay = 2000) => {
     let lastError;
     
     for (let attempt = 0; attempt < retryCount; attempt++) {
@@ -58,9 +84,17 @@ const Index = () => {
         console.log(`Tentativa ${attempt + 1} falhou:`, error);
         lastError = error;
         
-        // Esperar antes de tentar novamente
-        if (attempt < retryCount - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
+        // Verificar se é um erro 404 NOT_FOUND
+        const errorMessage = error?.message || String(error);
+        if (errorMessage.includes('404') || errorMessage.includes('NOT_FOUND')) {
+          console.log('Erro 404 NOT_FOUND detectado, aumentando tempo de espera');
+          // Aumentar o tempo de espera para erros 404
+          await new Promise(resolve => setTimeout(resolve, delay * 2));
+        } else {
+          // Esperar antes de tentar novamente
+          if (attempt < retryCount - 1) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
         }
       }
     }
@@ -80,12 +114,22 @@ const Index = () => {
       ]);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados do sistema');
+      const errorMessage = error?.message || String(error);
+      
+      // Verificar se é um erro 404 NOT_FOUND
+      if (errorMessage.includes('404') || errorMessage.includes('NOT_FOUND')) {
+        toast.error('Erro 404: Servidor não encontrado. Tentando reconectar...');
+        console.log('Erro 404 NOT_FOUND detectado na carga inicial de dados');
+      } else {
+        toast.error('Erro ao carregar dados do sistema');
+      }
+      
       setReconnecting(true);
-      // Tentar novamente após 5 segundos
+      // Tentar novamente após 10 segundos para erros 404, ou 5 segundos para outros erros
+      const retryDelay = (errorMessage.includes('404') || errorMessage.includes('NOT_FOUND')) ? 10000 : 5000;
       setTimeout(() => {
         loadAllData();
-      }, 5000);
+      }, retryDelay);
     } finally {
       setLoading(false);
     }
@@ -622,18 +666,30 @@ const Index = () => {
   if (reconnecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Reconectando ao servidor...</p>
-          <Button
-            onClick={loadAllData}
-            variant="outline"
-            size="sm"
-            className="mt-4 flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Tentar novamente
-          </Button>
+        <div className="text-center max-w-md p-6 border rounded-lg shadow-lg">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-xl font-bold mb-2">Erro de Conexão</h2>
+          <p className="text-muted-foreground mb-4">Não foi possível conectar ao servidor Supabase (Erro 404 NOT_FOUND).</p>
+          <div className="space-y-2 text-sm text-left bg-muted p-3 rounded mb-4">
+            <p>Possíveis causas:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Servidor Supabase temporariamente indisponível</li>
+              <li>Problemas de conexão com a internet</li>
+              <li>Configurações de autenticação expiradas</li>
+            </ul>
+          </div>
+          <p className="text-muted-foreground mb-4">Tentando reconectar automaticamente...</p>
+          <div className="flex justify-center space-x-3">
+            <Button
+              onClick={loadAllData}
+              variant="default"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente agora
+            </Button>
+          </div>
         </div>
       </div>
     );
